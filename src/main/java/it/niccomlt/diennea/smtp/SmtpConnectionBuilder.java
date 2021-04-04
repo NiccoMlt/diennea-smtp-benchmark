@@ -6,50 +6,88 @@ import java.util.Properties;
 
 public class SmtpConnectionBuilder {
     private static final String MAIL_SMTP_AUTH = "mail.smtp.auth";
-    private static final String MAIL_SMTP_SOCKET_FACTORY_FALLBACK = "mail.smtp.socketFactory.fallback";
     private static final String MAIL_SMTP_SOCKET_FACTORY_CLASS = "mail.smtp.socketFactory.class";
     private static final String MAIL_SMTP_HOST = "mail.smtp.socketFactory.host";
     private static final String MAIL_SMTP_PORT = "mail.smtp.port";
 
-    private final Properties props = new Properties();
-    private PasswordAuthentication authentication;
+    public static AuthenticationStep newBuilder() {
+        return new Steps();
+    }
 
     private SmtpConnectionBuilder() {
+
     }
 
-    public static SmtpConnectionBuilder unauthenticated() {
-        var builder = new SmtpConnectionBuilder();
-        builder.props.put(MAIL_SMTP_AUTH, "false");
-        builder.authentication = null; // TODO
-        return builder;
+    public interface AuthenticationStep {
+        SslStep authenticateAs(String email, String password);
     }
 
-    public static SmtpConnectionBuilder authenticated(String username, String password) {
-        var builder = new SmtpConnectionBuilder();
-        builder.props.put(MAIL_SMTP_AUTH, "true");
-        builder.props.put(MAIL_SMTP_SOCKET_FACTORY_FALLBACK, "false");
-        builder.props.put(MAIL_SMTP_SOCKET_FACTORY_CLASS, SSLSocketFactory.class.getCanonicalName());
-        builder.authentication = new PasswordAuthentication(username, password);
-        return builder;
+    public interface SslStep {
+        ServerStep withSsl();
+        ServerStep withoutSsl();
     }
 
-    public SmtpConnectionBuilder setHost(String host) {
-        this.props.put(MAIL_SMTP_HOST, host);
-        return this;
+    public interface ServerStep {
+        LastStep onServer(String host, int port);
     }
 
-    public SmtpConnectionBuilder setPort(int port) {
-        this.props.put(MAIL_SMTP_PORT, String.valueOf(port));
-        return this;
+    public interface LastStep {
+        Session buildSession();
+
+        Transport buildTransport() throws NoSuchProviderException;
+
+        MessageBuilder.ReceiverStep sendMessage();
     }
 
-    public Transport build() throws NoSuchProviderException {
-        var session = Session.getDefaultInstance(props, new Authenticator() {
-            @Override
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return authentication;
-            }
-        });
-        return session.getTransport();
+    private static class Steps implements SslStep, AuthenticationStep, ServerStep, LastStep {
+        private final Properties props = new Properties();
+        private PasswordAuthentication authentication;
+
+        @Override
+        public ServerStep withSsl() {
+            this.props.put(MAIL_SMTP_AUTH, "true");
+            this.props.put(MAIL_SMTP_SOCKET_FACTORY_CLASS, SSLSocketFactory.class.getCanonicalName());
+            return this;
+        }
+
+        @Override
+        public ServerStep withoutSsl() {
+            return this;
+        }
+
+        @Override
+        public SslStep authenticateAs(final String email, final String password) {
+            this.authentication = new PasswordAuthentication(email, password);
+            return this;
+        }
+
+        @Override
+        public LastStep onServer(final String host, final int port) {
+            this.props.put(MAIL_SMTP_HOST, host);
+            this.props.put(MAIL_SMTP_PORT, String.valueOf(port));
+            return null;
+        }
+
+        @Override
+        public Session buildSession() {
+            return Session.getDefaultInstance(props, new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return authentication;
+                }
+            });
+        }
+
+        @Override
+        public Transport buildTransport() throws NoSuchProviderException {
+            return this.buildSession().getTransport();
+        }
+
+        @Override
+        public MessageBuilder.ReceiverStep sendMessage() {
+            return MessageBuilder
+                .newBuilder(this.buildSession())
+                .from(this.authentication.getUserName());
+        }
     }
 }
