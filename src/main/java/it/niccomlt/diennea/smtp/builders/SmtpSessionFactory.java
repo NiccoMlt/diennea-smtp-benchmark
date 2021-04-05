@@ -1,10 +1,16 @@
 package it.niccomlt.diennea.smtp.builders;
 
 import javax.mail.*;
+import javax.mail.internet.AddressException;
 import javax.net.ssl.SSLSocketFactory;
 import java.util.Properties;
 
-public final class SmtpConnectionFactory {
+/**
+ * Factory class for SMTP {@link Session}s and {@link Transport}s.
+ * <p>
+ * The build processed is done via a {@link SmtpSessionFactory#sessionBuilder() step builder}.
+ */
+public final class SmtpSessionFactory {
     private static final String MAIL_SMTP_AUTH = "mail.smtp.auth";
     private static final String MAIL_SMTP_SOCKET_FACTORY_CLASS = "mail.smtp.socketFactory.class";
     private static final String SOCKET_FACTORY_CLASS_NAME = SSLSocketFactory.class.getCanonicalName();
@@ -14,7 +20,7 @@ public final class SmtpConnectionFactory {
     /**
      * Private constructor.
      */
-    private SmtpConnectionFactory() {
+    private SmtpSessionFactory() {
         throw new AssertionError(); // this constructor is meant not to be called
     }
 
@@ -23,7 +29,7 @@ public final class SmtpConnectionFactory {
      *
      * @return a new builder.
      */
-    public static AuthenticationStep connectionBuilder() {
+    public static AuthenticationStep sessionBuilder() {
         return new Steps();
     }
 
@@ -38,7 +44,7 @@ public final class SmtpConnectionFactory {
          * @param password the password used to authenticate.
          * @return this builder at the next step.
          */
-        SslStep authenticateAs(String email, String password);
+        SslStep authenticateAs(final String email, final String password);
     }
 
     /**
@@ -60,15 +66,47 @@ public final class SmtpConnectionFactory {
         ServerStep withoutSsl();
     }
 
+    /**
+     * Third step of the build: configure the SMTP server.
+     */
     public interface ServerStep {
-        LastStep onServer(String host, int port);
+        /**
+         * Configure the host and the port of the SMTP server.
+         *
+         * @param host the host name.
+         * @param port the port on the host.
+         * @return this builder at the next step.
+         */
+        LastStep onServer(final String host, final int port);
     }
 
+    /**
+     * Last step of the build: build the session.
+     */
     public interface LastStep {
+        /**
+         * Build and get a new SMTP session with the specified parameters.
+         *
+         * @return a new SMTP session.
+         */
         Session buildSession();
 
+        /**
+         * Build a new SMTP session with the specified parameters and get the transport.
+         *
+         * @return a new SMTP transport.
+         * @throws NoSuchProviderException if the provider is not found.
+         */
         Transport buildTransport() throws NoSuchProviderException;
 
+        /**
+         * Build a new SMTP session with the specified parameters and start building a new message to send.
+         *
+         * @return a new message builder configured with the built SMTP session.
+         * @throws AddressException   if {@link MessageFactory.SenderStep#from(String) sender}
+         *                            cannot be parsed as a JavaMail {@link Address}.
+         * @throws MessagingException if another error happens during {@link Message} configuration.
+         */
         MessageFactory.ReceiverStep sendMessage() throws MessagingException;
     }
 
@@ -103,9 +141,12 @@ public final class SmtpConnectionFactory {
 
         @Override
         public Session buildSession() {
-            return Session.getDefaultInstance(props, new Authenticator() {
+            var sessionProperties = new Properties();
+            sessionProperties.putAll(this.props);
+            return Session.getDefaultInstance(sessionProperties, new Authenticator() {
                 @Override
                 protected PasswordAuthentication getPasswordAuthentication() {
+                    // the authentication object is immutable, so a defensive copy is not needed
                     return authentication;
                 }
             });

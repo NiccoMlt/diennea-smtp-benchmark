@@ -1,10 +1,14 @@
 package it.niccomlt.diennea.smtp.builders;
 
 import javax.mail.*;
-import javax.mail.internet.*;
+import javax.mail.internet.AddressException;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
 
 /**
- * Step builder for JavaMail {@link Message} objects.
+ * Factory class for JavaMail {@link Message} objects.
+ * <p>
+ * The build processed is done via a {@link MessageFactory#messageBuilder(Session) step builder}.
  */
 public final class MessageFactory {
 
@@ -81,15 +85,6 @@ public final class MessageFactory {
          * @throws MessagingException if some error happens during {@link Message} configuration.
          */
         LastStep withTextBody(final String messageBody) throws MessagingException;
-
-        /**
-         * Set an HTML body for the email.
-         *
-         * @param messageBody the body of the email as HTML.
-         * @return this builder at the last step.
-         * @throws MessagingException if some error happens during {@link Message} configuration.
-         */
-        LastStep withHtmlBody(final String messageBody) throws MessagingException;
     }
 
     /**
@@ -97,11 +92,11 @@ public final class MessageFactory {
      */
     public interface LastStep {
         /**
-         * Build and get a new message.
+         * Build and get a new message with the specified parameters.
          *
          * @return a new message.
          */
-        Message build();
+        Message build() throws MessagingException;
 
         /**
          * Build and send a new message.
@@ -113,52 +108,64 @@ public final class MessageFactory {
     }
 
     private static class Steps implements SenderStep, ReceiverStep, SubjectStep, BodyStep, LastStep {
-        private final Message message;
+        private final Session session;
+        private String sender;
+        private String recipient;
+        private String subject;
+        private String body;
 
         public Steps(final Session session) {
-            this.message = new MimeMessage(session);
+            this.session = session;
         }
 
         @Override
-        public ReceiverStep from(String address) throws MessagingException {
-            this.message.setFrom(new InternetAddress(address));
+        public ReceiverStep from(final String address) throws AddressException {
+            this.sender = validateAddress(address);
             return this;
         }
 
         @Override
-        public SubjectStep to(String address) throws MessagingException {
-            this.message.setRecipient(Message.RecipientType.TO, new InternetAddress(address));
+        public SubjectStep to(final String address) throws AddressException {
+            this.recipient = validateAddress(address);
             return this;
         }
 
         @Override
-        public BodyStep withSubject(String subject) throws MessagingException {
-            this.message.setSubject(subject);
+        public BodyStep withSubject(final String subject) {
+            this.subject = subject;
             return this;
         }
 
         @Override
-        public LastStep withHtmlBody(String messageBody) throws MessagingException {
-            var bodyPart = new MimeBodyPart();
-            bodyPart.setContent(messageBody, "text/html");
-            this.message.setContent(new MimeMultipart(bodyPart));
+        public LastStep withTextBody(final String messageBody) {
+            this.body = messageBody;
             return this;
         }
 
         @Override
-        public LastStep withTextBody(String messageBody) throws MessagingException {
-            this.message.setText(messageBody);
-            return this;
-        }
-
-        @Override
-        public Message build() {
-            return message; // TODO: introduce defensive copy
+        public Message build() throws MessagingException {
+            var message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(this.sender));
+            message.setRecipient(Message.RecipientType.TO, new InternetAddress(this.recipient));
+            message.setSubject(this.subject);
+            message.setText(this.body);
+            return message;
         }
 
         @Override
         public void buildAndSend() throws MessagingException {
             Transport.send(this.build());
+        }
+
+        /**
+         * Validate email address.
+         *
+         * @param address the email address.
+         * @return the email address, if valid.
+         * @throws AddressException if address cannot be parsed as a JavaMail {@link Address}.
+         */
+        private String validateAddress(final String address) throws AddressException {
+            return new InternetAddress(address).getAddress();
         }
     }
 }
