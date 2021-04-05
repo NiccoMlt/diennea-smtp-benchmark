@@ -3,6 +3,7 @@ package it.niccomlt.diennea.smtp.builders;
 import javax.mail.*;
 import javax.mail.internet.AddressException;
 import javax.net.ssl.SSLSocketFactory;
+import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -11,11 +12,15 @@ import java.util.Properties;
  * The build processed is done via a {@link SmtpSessionFactory#sessionBuilder() step builder}.
  */
 public final class SmtpSessionFactory {
+    private static final String MAIL_SMTP_SOCKET_FACTORY_FALLBACK = "mail.smtp.socketFactory.fallback";
+    private static final String MAIL_SMTP_STARTTLS_ENABLE = "mail.smtp.starttls.enable";
     private static final String MAIL_SMTP_AUTH = "mail.smtp.auth";
     private static final String MAIL_SMTP_SOCKET_FACTORY_CLASS = "mail.smtp.socketFactory.class";
     private static final String SOCKET_FACTORY_CLASS_NAME = SSLSocketFactory.class.getCanonicalName();
-    private static final String MAIL_SMTP_HOST = "mail.smtp.socketFactory.host";
+    private static final String MAIL_SMTP_SOCKET_FACTORY_HOST = "mail.smtp.socketFactory.host";
+    private static final String MAIL_SMTP_HOST = "mail.smtp.host";
     private static final String MAIL_SMTP_PORT = "mail.smtp.port";
+    private static final String MAIL_SMTP_SOCKET_FACTORY_PORT = "mail.smtp.socketFactory.port";
 
     /**
      * Private constructor.
@@ -44,26 +49,33 @@ public final class SmtpSessionFactory {
          * @param password the password used to authenticate.
          * @return this builder at the next step.
          */
-        SslStep authenticateAs(final String email, final String password);
+        EncryptionStep authenticateAs(final String email, final String password);
+
+        /**
+         * Set the connection not to use authentication.
+         *
+         * @return this builder at the next step.
+         */
+        ServerStep doNotAuthenticate();
     }
 
     /**
-     * Second step of the build: configure SSL usage.
+     * Second step of the build: configure encryption for authentication.
      */
-    public interface SslStep {
+    public interface EncryptionStep {
+        /**
+         * Configure the connection to use TLS.
+         *
+         * @return this builder at the next step.
+         */
+        ServerStep withTLS();
+
         /**
          * Configure the connection to use SSL.
          *
          * @return this builder at the next step.
          */
-        ServerStep withSsl();
-
-        /**
-         * Configure the connection not to use SSL.
-         *
-         * @return this builder at the next step.
-         */
-        ServerStep withoutSsl();
+        ServerStep withSSL();
     }
 
     /**
@@ -110,25 +122,34 @@ public final class SmtpSessionFactory {
         MessageFactory.ReceiverStep sendMessage() throws MessagingException;
     }
 
-    private static class Steps implements SslStep, AuthenticationStep, ServerStep, LastStep {
+    private static class Steps implements EncryptionStep, AuthenticationStep, ServerStep, LastStep {
         private final Properties props = new Properties();
         private PasswordAuthentication authentication;
+        private boolean useSsl = false;
 
         @Override
-        public ServerStep withSsl() {
-            this.props.put(MAIL_SMTP_AUTH, "true");
+        public ServerStep withSSL() {
+            this.useSsl = true;
             this.props.put(MAIL_SMTP_SOCKET_FACTORY_CLASS, SOCKET_FACTORY_CLASS_NAME);
+            this.props.put(MAIL_SMTP_SOCKET_FACTORY_FALLBACK, "false");
             return this;
         }
 
         @Override
-        public ServerStep withoutSsl() {
+        public ServerStep withTLS() {
+            this.props.put(MAIL_SMTP_STARTTLS_ENABLE, "true");
             return this;
         }
 
         @Override
-        public SslStep authenticateAs(final String email, final String password) {
+        public EncryptionStep authenticateAs(final String email, final String password) {
+            this.props.put(MAIL_SMTP_AUTH, "true");
             this.authentication = new PasswordAuthentication(email, password);
+            return this;
+        }
+
+        @Override
+        public ServerStep doNotAuthenticate() {
             return this;
         }
 
@@ -136,6 +157,10 @@ public final class SmtpSessionFactory {
         public LastStep onServer(final String host, final int port) {
             this.props.put(MAIL_SMTP_HOST, host);
             this.props.put(MAIL_SMTP_PORT, String.valueOf(port));
+            if (this.useSsl) {
+                this.props.put(MAIL_SMTP_SOCKET_FACTORY_HOST, host);
+                this.props.put(MAIL_SMTP_SOCKET_FACTORY_PORT, String.valueOf(port));
+            }
             return this;
         }
 
@@ -159,6 +184,7 @@ public final class SmtpSessionFactory {
 
         @Override
         public MessageFactory.ReceiverStep sendMessage() throws MessagingException {
+            Objects.requireNonNull(this.authentication);
             return MessageFactory
                 .messageBuilder(this.buildSession())
                 .from(this.authentication.getUserName());

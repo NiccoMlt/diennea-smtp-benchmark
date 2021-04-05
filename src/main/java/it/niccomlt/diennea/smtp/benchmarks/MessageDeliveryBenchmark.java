@@ -1,21 +1,22 @@
 package it.niccomlt.diennea.smtp.benchmarks;
 
+import com.thedeanda.lorem.LoremIpsum;
 import it.niccomlt.diennea.smtp.builders.MessageFactory;
 import it.niccomlt.diennea.smtp.builders.SmtpSessionFactory;
 import org.openjdk.jmh.annotations.*;
 
-import javax.mail.MessagingException;
-import javax.mail.Session;
+import javax.mail.*;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.AverageTime)
 @State(Scope.Benchmark)
+@BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class MessageDeliveryBenchmark {
+
     @Param({"address@example.org"})
     private String email;
 
-    @Param({"pass"})
+    @Param({"passo"})
     private String password;
 
     @Param({"localhost"})
@@ -27,32 +28,43 @@ public class MessageDeliveryBenchmark {
     @Param({"debug@example.org"})
     private String recipient;
 
-    @Param({"foo"})
-    private String subject;
+    @Param({"1", "100", "10000", "1000000"})
+    private int wordCount;
 
-    @Param({"bar"})
-    private String body;
+    private Transport transport;
 
-    private Session session;
+    private Message message;
 
     @Setup
-    public void setup() {
-        this.session = SmtpSessionFactory
+    public void setup() throws MessagingException {
+        var session = SmtpSessionFactory
             .sessionBuilder()
             .authenticateAs(email, password)
-            .withoutSsl()
+            .withTLS()
             .onServer(host, port)
             .buildSession();
+        var subject = "Test subject";
+        var body = LoremIpsum
+            .getInstance()
+            .getWords(this.wordCount);
+        this.transport = session.getTransport();
+        this.message = MessageFactory
+            .messageBuilder(session)
+            .from(this.email)
+            .to(this.recipient)
+            .withSubject(subject)
+            .withTextBody(body)
+            .build();
+        this.transport.connect();
     }
 
     @Benchmark
     public void testSend() throws MessagingException {
-        MessageFactory
-            .messageBuilder(this.session)
-            .from(this.email)
-            .to(this.recipient)
-            .withSubject(this.subject)
-            .withTextBody(this.body)
-            .buildAndSend();
+        this.transport.sendMessage(message, message.getAllRecipients());
+    }
+
+    @TearDown
+    public void tearDown() throws MessagingException {
+        this.transport.close();
     }
 }
