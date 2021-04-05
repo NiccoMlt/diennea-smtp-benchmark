@@ -1,9 +1,7 @@
 package it.niccomlt.diennea.smtp.builders;
 
 import javax.mail.*;
-import javax.mail.internet.AddressException;
 import javax.net.ssl.SSLSocketFactory;
-import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -115,11 +113,8 @@ public final class SmtpSessionFactory {
          * Build a new SMTP session with the specified parameters and start building a new message to send.
          *
          * @return a new message builder configured with the built SMTP session.
-         * @throws AddressException   if {@link MessageFactory.SenderStep#from(String) sender}
-         *                            cannot be parsed as a JavaMail {@link Address}.
-         * @throws MessagingException if another error happens during {@link Message} configuration.
          */
-        MessageFactory.ReceiverStep sendMessage() throws MessagingException;
+        MessageFactory.SenderStep sendMessage();
     }
 
     private static class Steps implements EncryptionStep, AuthenticationStep, ServerStep, LastStep {
@@ -183,11 +178,8 @@ public final class SmtpSessionFactory {
         }
 
         @Override
-        public MessageFactory.ReceiverStep sendMessage() throws MessagingException {
-            Objects.requireNonNull(this.authentication);
-            return MessageFactory
-                .messageBuilder(this.buildSession())
-                .from(this.authentication.getUserName());
+        public MessageFactory.SenderStep sendMessage() {
+            return MessageFactory.messageBuilder(this.buildSession());
         }
     }
 }
