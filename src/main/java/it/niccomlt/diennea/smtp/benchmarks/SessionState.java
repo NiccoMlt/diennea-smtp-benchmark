@@ -7,6 +7,9 @@ import javax.mail.MessagingException;
 import javax.mail.Session;
 import javax.mail.Transport;
 
+/**
+ * JMH benchmark state for SMTP-related parameters.
+ */
 @State(Scope.Benchmark)
 public class SessionState {
 
@@ -37,13 +40,13 @@ public class SessionState {
         this.transport.connect();
     }
 
-    public Transport getTransport() {
-        return transport;
-    }
-
     @TearDown
     public void tearDown() throws MessagingException {
         this.transport.close();
+    }
+
+    public Transport getTransport() {
+        return transport;
     }
 
     public Session getSession() {

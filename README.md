@@ -25,10 +25,10 @@ Executing `it.niccomlt.diennea.smtp.BenchmarkRunner` `main` method is another wa
 
 ### SMTP test server and authentication
 
-The benchmarks are provided already configured to execute against a free instance of <develmail.com> SMTP fake server.
+The benchmarks are provided already configured to execute against a free instance of develmail.com SMTP fake server.
 
 The execution of the benchmarks _may_ fill up the mailbox, as it is very small in the free plan.
-This is also the reason why no huge sizes or numbers of messages were used in default parameters.
+This is also the reason why no huge numbers were used as default parameters.
 
 The benchmarks accept `host`, `port`, `username` and `password` as parameters, so they can be configured if needed.
 

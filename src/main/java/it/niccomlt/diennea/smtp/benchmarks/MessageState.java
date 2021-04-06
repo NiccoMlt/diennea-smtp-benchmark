@@ -6,6 +6,9 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 
+/**
+ * JMH benchmark state for message-related parameters.
+ */
 @State(Scope.Benchmark)
 public class MessageState {
 

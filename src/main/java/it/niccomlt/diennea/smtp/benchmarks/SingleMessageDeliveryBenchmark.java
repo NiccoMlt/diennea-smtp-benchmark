@@ -7,6 +7,9 @@ import javax.mail.Message;
 import javax.mail.MessagingException;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Benchmark the sending of messages via SMTP.
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(value = 1, warmups = 1)
@@ -17,7 +20,7 @@ public class SingleMessageDeliveryBenchmark {
     private Message message;
 
     @Setup
-    public void setup(SessionState sessionState, MessageState messageState) throws MessagingException {
+    public void setup(final SessionState sessionState, final MessageState messageState) throws MessagingException {
         this.message = MessageFactory
             .messageBuilder(sessionState.getSession())
             .from(messageState.getSender())
@@ -28,7 +31,7 @@ public class SingleMessageDeliveryBenchmark {
     }
 
     @Benchmark
-    public void testSend(SessionState state) throws MessagingException {
+    public void testSend(final SessionState state) throws MessagingException {
         state.getTransport().sendMessage(this.message, this.message.getAllRecipients());
     }
 }

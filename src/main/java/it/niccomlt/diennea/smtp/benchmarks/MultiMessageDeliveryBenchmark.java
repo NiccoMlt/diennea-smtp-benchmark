@@ -10,6 +10,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * Benchmark the sending of multiple messages onto a single SMTP session transport.
+ */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(value = 1, warmups = 1)
@@ -23,7 +26,7 @@ public class MultiMessageDeliveryBenchmark {
     private List<Message> messages;
 
     @Setup
-    public void setup(SessionState sessionState, MessageState messageState) {
+    public void setup(final SessionState sessionState, final MessageState messageState) {
         this.messages = IntStream
             .range(0, messageCount)
             .mapToObj(i -> {
@@ -43,7 +46,7 @@ public class MultiMessageDeliveryBenchmark {
     }
 
     @Benchmark
-    public void testSend(SessionState state) throws MessagingException {
+    public void testSend(final SessionState state) throws MessagingException {
         var transport = state.getTransport();
         for (var message : this.messages) {
             transport.sendMessage(message, message.getAllRecipients());

@@ -5,6 +5,9 @@ import it.niccomlt.diennea.smtp.benchmarks.SingleMessageDeliveryBenchmark;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
+/**
+ * Entrypoint of the benchmarks.
+ */
 public class BenchmarkRunner {
     public static void main(String[] args) throws Exception {
         var opt = new OptionsBuilder()
