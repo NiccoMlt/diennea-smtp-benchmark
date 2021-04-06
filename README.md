@@ -30,7 +30,8 @@ The benchmarks are provided already configured to execute against a free instanc
 The execution of the benchmarks _may_ fill up the mailbox, as it is very small in the free plan.
 This is also the reason why no huge numbers were used as default parameters.
 
-The benchmarks accept `host`, `port`, `username` and `password` as parameters, so they can be configured if needed.
+The benchmarks accept `host`, `port`, `username` and `password` as parameters, so they can be configured if needed with `-p <param={v,}*>` CLI parameter; 
+see [official samples](https://github.com/openjdk/jmh/blob/master/jmh-samples/src/main/java/org/openjdk/jmh/samples/JMHSample_27_Params.java#L76-L92) for more details.
 
 ### Benchmarks
 
