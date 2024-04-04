@@ -1,9 +1,5 @@
 extends: "default"
 
-ignore: |
-  .build/
-  vendor/
-
 rules:
   braces:
     max-spaces-inside-empty: 0

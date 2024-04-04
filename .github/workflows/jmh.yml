@@ -21,3 +21,9 @@ jobs:
         run: "./mvnw clean install"
       - name: "Run JMH benchmarks"
         run: "java -jar target/benchmarks.jar"
+      - name: "JMH Benchmark Action"
+        uses: "kitlangton/jmh-benchmark-action@main"
+        with:
+          jmh-output-path: "output.json"
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          fail-on-regression: true
