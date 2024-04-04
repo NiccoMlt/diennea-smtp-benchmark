@@ -1,29 +1,30 @@
-name: "Run JMH benchmarks"
+name: Run JMH benchmarks
 
-on: # yamllint disable-line rule:truthy
+# yamllint disable-line rule:truthy
+on:
   push:
     paths-ignore:
-      - "README.md"
+      - README.md
 
 jobs:
   build:
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     steps:
-      - name: "Checkout"
-        uses: "actions/checkout@v4"
-      - name: "Set up JDK 21"
-        uses: "actions/setup-java@v4"
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
-          java-version: "21"
-          distribution: "temurin"
-          cache: "maven"
-      - name: "Build with Maven"
-        run: "./mvnw clean install"
-      - name: "Run JMH benchmarks"
-        run: "java -jar target/benchmarks.jar"
-      - name: "JMH Benchmark Action"
-        uses: "kitlangton/jmh-benchmark-action@main"
+          java-version: 21
+          distribution: temurin
+          cache: maven
+      - name: Build with Maven
+        run: ./mvnw clean install
+      - name: Run JMH benchmarks
+        run: java -jar target/benchmarks.jar
+      - name: JMH Benchmark Action
+        uses: kitlangton/jmh-benchmark-action@main
         with:
-          jmh-output-path: "output.json"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          jmh-output-path: output.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-regression: true

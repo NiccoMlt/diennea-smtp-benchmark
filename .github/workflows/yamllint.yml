@@ -1,11 +1,12 @@
-on: "push"  # yamllint disable-line rule:truthy
+# yamllint disable-line rule:truthy
+on: push
 
 jobs:
   lint:
-    runs-on: ""
+    runs-on: ''
     steps:
-      - uses: "actions/checkout@v3"
-      - name: "Install yamllint"
-        run: "pip install yamllint"
-      - name: "Lint YAML files"
-        run: "yamllint ."
+      - uses: actions/checkout@v4
+      - name: Install yamllint
+        run: pip install yamllint
+      - name: Lint YAML files
+        run: yamllint .
